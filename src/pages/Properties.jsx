@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Search } from 'lucide-react';
 import { PageWrapper, Topbar, StatCard } from '../components/UI';
 import PropertyCard from '../components/PropertyCard';
 import PropertyDetailModal from '../components/PropertyDetailModal';
 import ListPropertyModal from '../components/ListPropertyModal';
+import { apiCreateProperty, apiDeleteProperty } from '../api';
 
 const FILTERS = ['All', 'Available', 'Occupied', 'Pending'];
 
@@ -12,30 +12,40 @@ export default function Properties({ properties = [], setProperties, showToast }
   const [search, setSearch]         = useState('');
   const [listOpen, setListOpen]     = useState(false);
   const [detailProp, setDetailProp] = useState(null);
+  const [saving, setSaving]         = useState(false); // ← saving state here
 
   const filtered = properties.filter(p => {
     const matchFilter = filter === 'All' || p.status === filter.toLowerCase();
     const matchSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.location.toLowerCase().includes(search.toLowerCase());
+      (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.location || '').toLowerCase().includes(search.toLowerCase());
     return matchFilter && matchSearch;
   });
 
-  const handleAdd = form => {
-    const newProp = {
-      ...form,
-      id: Date.now(),
-      color: properties.length % 4,
-      dateAdded: new Date().toISOString().split('T')[0],
-    };
-    setProperties(prev => [newProp, ...prev]);
-    if (showToast) showToast('Property listed successfully!');
+  // ── Saves to MongoDB ──────────────────────────────────────────────────
+  const handleAdd = async (form) => {
+    setSaving(true);
+    try {
+      const saved = await apiCreateProperty(form);
+      setProperties(prev => [{ ...saved, color: prev.length % 4 }, ...prev]);
+      showToast('Property listed successfully!');
+      setListOpen(false);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save. Is the backend running?', 'error');
+    }
+    setSaving(false);
   };
 
-  const handleDelete = id => {
-    if (window.confirm('Remove this property?')) {
+  // ── Deletes from MongoDB ──────────────────────────────────────────────
+  const handleDelete = async (id) => {
+    if (!window.confirm('Remove this property?')) return;
+    try {
+      await apiDeleteProperty(id);
       setProperties(prev => prev.filter(p => p.id !== id));
-      if (showToast) showToast('Property removed.');
+      showToast('Property removed.');
+    } catch {
+      showToast('Failed to delete property.', 'error');
     }
   };
 
@@ -61,7 +71,7 @@ export default function Properties({ properties = [], setProperties, showToast }
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-          <StatCard label="Total"     value={properties.length} sub="All listings" />
+          <StatCard label="Total"     value={properties.length}                                       sub="All listings" />
           <StatCard label="Available" value={properties.filter(p => p.status === 'available').length} sub="Ready for tenants" subColor="var(--green)" />
           <StatCard label="Occupied"  value={properties.filter(p => p.status === 'occupied').length}  sub="Active tenants" />
           <StatCard label="Pending"   value={properties.filter(p => p.status === 'pending').length}   sub="Under review" subColor="var(--amber)" />
@@ -72,7 +82,8 @@ export default function Properties({ properties = [], setProperties, showToast }
           <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
             <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#888', pointerEvents: 'none' }}>🔍</span>
             <input
-              value={search} onChange={e => setSearch(e.target.value)}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or location..."
               style={{ width: '100%', padding: '8px 11px 8px 32px', border: '1px solid #D3D1C7', borderRadius: 10, fontSize: 13.5, background: '#fff', outline: 'none' }}
             />
@@ -126,6 +137,7 @@ export default function Properties({ properties = [], setProperties, showToast }
         open={listOpen}
         onClose={() => setListOpen(false)}
         onSubmit={handleAdd}
+        saving={saving}
       />
 
       <PropertyDetailModal
