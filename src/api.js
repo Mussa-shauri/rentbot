@@ -104,3 +104,88 @@ export const apiUpdateProperty = async (id, form) => {
   const data = await res.json();
   return toFrontend(data);
 };
+// ── Tenants ───────────────────────────────────────────────────────────────
+export const apiGetTenants = async () => {
+  const res = await fetch(`${BASE}/tenants`, { headers: jsonHeaders() });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
+};
+
+export const apiCreateTenant = async (form) => {
+  const res = await fetch(`${BASE}/tenants`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(form),
+  });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
+};
+
+// ── Payments ──────────────────────────────────────────────────────────────
+export const apiGetPayments = async () => {
+  const res = await fetch(`${BASE}/payments`, { headers: jsonHeaders() });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
+};
+
+export const apiCreatePayment = async (form) => {
+  const res = await fetch(`${BASE}/payments`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(form),
+  });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
+};
+
+export const apiUpdatePayment = async (id, form) => {
+  const res = await fetch(`${BASE}/payments/${id}`, {
+    method: 'PUT',
+    headers: jsonHeaders(),
+    body: JSON.stringify(form),
+  });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
+};
+
+export const apiDeletePayment = async (id) => {
+  const res = await fetch(`${BASE}/payments/${id}`, {
+    method: 'DELETE',
+    headers: jsonHeaders(),
+  });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+};
+
+// ── Messages ──────────────────────────────────────────────────────────────
+export const apiGetMessages = async () => {
+  const res = await fetch(`${BASE}/messages`, { headers: jsonHeaders() });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
+};
+
+export const apiCreateMessage = async (form) => {
+  const res = await fetch(`${BASE}/messages`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(form),
+  });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
+};
+
+export const apiMarkMessageRead = async (id) => {
+  const res = await fetch(`${BASE}/messages/${id}/read`, {
+    method: 'PUT',
+    headers: jsonHeaders(),
+  });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  return res.json();
+};
+
+export const apiDeleteMessage = async (id) => {
+  const res = await fetch(`${BASE}/messages/${id}`, {
+    method: 'DELETE',
+    headers: jsonHeaders(),
+  });
+  if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+};

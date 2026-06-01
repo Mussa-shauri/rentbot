@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import { Toast } from './components/UI';
-import { MESSAGES } from './data/data';
-import { apiGetProperties } from './api';
+import { apiGetProperties, apiGetMessages } from './api';
 
 import Login      from './pages/Login';
 import Register   from './pages/Register';
@@ -18,6 +17,7 @@ export default function App() {
   const [authPage, setAuthPage]     = useState('login');
   const [activePage, setActivePage] = useState('dashboard');
   const [properties, setProperties] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading]       = useState(false);
   const [toast, setToast]           = useState({ visible: false, message: '', type: 'success' });
 
@@ -27,15 +27,39 @@ export default function App() {
     if (session) setUser(JSON.parse(session));
   }, []);
 
-  // Fetch properties from MongoDB when user logs in
+  // Fetch properties and unread message count when user logs in
   useEffect(() => {
     if (!user) return;
     setLoading(true);
     apiGetProperties()
       .then(data => setProperties(data))
-      .catch(() => showToast('Could not load properties from server.', 'error'))
+      .catch(() => showToast('Could not load properties.', 'error'))
       .finally(() => setLoading(false));
+
+    // Fetch real unread message count
+    apiGetMessages()
+      .then(data => {
+        const count = Array.isArray(data)
+          ? data.filter(m => m.status === 'unread').length
+          : 0;
+        setUnreadCount(count);
+      })
+      .catch(() => setUnreadCount(0));
   }, [user]);
+
+  // Update unread count when user visits messages page
+  useEffect(() => {
+    if (activePage === 'messages' && user) {
+      apiGetMessages()
+        .then(data => {
+          const count = Array.isArray(data)
+            ? data.filter(m => m.status === 'unread').length
+            : 0;
+          setUnreadCount(count);
+        })
+        .catch(() => {});
+    }
+  }, [activePage]);
 
   const handleLogin = (u) => setUser(u);
 
@@ -44,6 +68,7 @@ export default function App() {
     localStorage.removeItem('rentbot_token');
     setUser(null);
     setProperties([]);
+    setUnreadCount(0);
     setAuthPage('login');
     setActivePage('dashboard');
   };
@@ -59,8 +84,7 @@ export default function App() {
       : <Register onGoLogin={() => setAuthPage('login')} />;
   }
 
-  const unreadCount = MESSAGES.filter(m => m.unread).length;
-  const pageProps   = { properties, setProperties, showToast, setActivePage };
+  const pageProps = { properties, setProperties, showToast, setActivePage, user };
 
   const renderPage = () => {
     if (loading) return (
@@ -82,7 +106,13 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#F1EFE8' }}>
-      <Sidebar active={activePage} setActive={setActivePage} unreadCount={unreadCount} user={user} onLogout={handleLogout} />
+      <Sidebar
+        active={activePage}
+        setActive={setActivePage}
+        unreadCount={unreadCount}
+        user={user}
+        onLogout={handleLogout}
+      />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {renderPage()}
       </div>

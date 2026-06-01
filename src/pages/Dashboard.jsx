@@ -1,9 +1,17 @@
-import React from 'react';
-import { Home, Users, CreditCard, TrendingUp, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-import { StatCard, SectionHeader, PageWrapper, Topbar } from '../components/UI';
-import { PAYMENTS, MESSAGES } from '../data/data';
+import React, { useEffect, useState } from 'react';
+import { Home, Users, TrendingUp, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { PageWrapper, Topbar } from '../components/UI';
+import { apiGetMessages } from '../api';
 
-export default function Dashboard({ properties, setActivePage }) {
+export default function Dashboard({ properties, setActivePage, user }) {
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    apiGetMessages()
+      .then(data => setMessages(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
   const total     = properties.length;
   const available = properties.filter(p => p.status === 'available').length;
   const occupied  = properties.filter(p => p.status === 'occupied').length;
@@ -13,7 +21,14 @@ export default function Dashboard({ properties, setActivePage }) {
     .reduce((a, b) => a + Number(b.price), 0);
 
   const recentProperties = [...properties].slice(0, 3);
-  const unread = MESSAGES.filter(m => m.unread).length;
+  const unread = messages.filter(m => m.status === 'unread').length;
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning 👋';
+    if (hour < 17) return 'Good afternoon 👋';
+    return 'Good evening 👋';
+  };
 
   const card = (icon, label, value, sub, subColor, bg, onClick) => (
     <div
@@ -58,9 +73,13 @@ export default function Dashboard({ properties, setActivePage }) {
           color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div>
-            <p style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>Good morning 👋</p>
-            <h1 style={{ fontSize: 22, fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: 6 }}>James Mwangi</h1>
-            <p style={{ fontSize: 13, opacity: 0.75 }}>You have {unread} unread message{unread !== 1 ? 's' : ''} and {available} available propert{available !== 1 ? 'ies' : 'y'}.</p>
+            <p style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>{getGreeting()}</p>
+            <h1 style={{ fontSize: 22, fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: 6 }}>
+              {user?.name || 'Landlord'}
+            </h1>
+            <p style={{ fontSize: 13, opacity: 0.75 }}>
+              You have {unread} unread message{unread !== 1 ? 's' : ''} and {available} available propert{available !== 1 ? 'ies' : 'y'}.
+            </p>
           </div>
           <div style={{ fontSize: 52, opacity: 0.25 }}>🏢</div>
         </div>
@@ -73,7 +92,7 @@ export default function Dashboard({ properties, setActivePage }) {
           {card(<TrendingUp size={16} color="var(--amber)" />, 'Monthly revenue', revenue >= 1000000 ? `TZS ${(revenue / 1000000).toFixed(1)}M` : `TZS ${revenue.toLocaleString()}`, 'From occupied units', 'var(--green)', 'var(--amber-light)', () => setActivePage('payments'))}
         </div>
 
-        {/* Recent properties + messages row */}
+        {/* Recent properties + messages */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
           {/* Recent Properties */}
@@ -82,9 +101,13 @@ export default function Dashboard({ properties, setActivePage }) {
               <span style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Recent Properties</span>
               <span onClick={() => setActivePage('properties')} style={{ fontSize: 12, color: 'var(--blue)', cursor: 'pointer', fontWeight: 500 }}>View all →</span>
             </div>
-            {recentProperties.length === 0
-              ? <p style={{ padding: 18, fontSize: 13, color: 'var(--gray-400)' }}>No properties yet.</p>
-              : recentProperties.map(p => (
+            {recentProperties.length === 0 ? (
+              <div style={{ padding: '24px 18px', textAlign: 'center' }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>🏠</div>
+                <p style={{ fontSize: 13, color: 'var(--gray-400)' }}>No properties yet.</p>
+              </div>
+            ) : (
+              recentProperties.map(p => (
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ width: 40, height: 40, borderRadius: 10, background: ['#E6F1FB','#E1F5EE','#FAEEDA','#FBEAF0'][p.color % 4], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
                     {['🏢','🏠','🏡','🏗️'][p.color % 4]}
@@ -98,28 +121,39 @@ export default function Dashboard({ properties, setActivePage }) {
                     <span>{statusDot(p.status)}<span style={{ fontSize: 11, color: 'var(--gray-400)', textTransform: 'capitalize' }}>{p.status}</span></span>
                   </div>
                 </div>
-              ))}
+              ))
+            )}
           </div>
 
-          {/* Recent Messages */}
+          {/* Recent Messages from MongoDB */}
           <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Recent Inquiries</span>
               <span onClick={() => setActivePage('messages')} style={{ fontSize: 12, color: 'var(--blue)', cursor: 'pointer', fontWeight: 500 }}>View all →</span>
             </div>
-            {MESSAGES.slice(0, 3).map(m => (
-              <div key={m.id} style={{ display: 'flex', gap: 10, padding: '12px 18px', borderBottom: '1px solid var(--border)', background: m.unread ? 'var(--blue-light)' : '#fff' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--blue)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>{m.avatar}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: m.unread ? 600 : 400, color: 'var(--gray-800)' }}>{m.from}</span>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{m.time}</span>
-                  </div>
-                  <p style={{ fontSize: 12, color: 'var(--gray-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.text}</p>
-                  <p style={{ fontSize: 11, color: 'var(--blue)', marginTop: 2 }}>{m.property}</p>
-                </div>
+            {messages.length === 0 ? (
+              <div style={{ padding: '24px 18px', textAlign: 'center' }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>💬</div>
+                <p style={{ fontSize: 13, color: 'var(--gray-400)' }}>No inquiries yet.</p>
+                <p style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Messages from tenants will appear here.</p>
               </div>
-            ))}
+            ) : (
+              messages.slice(0, 3).map(m => (
+                <div key={m._id} style={{ display: 'flex', gap: 10, padding: '12px 18px', borderBottom: '1px solid var(--border)', background: m.status === 'unread' ? 'var(--blue-light)' : '#fff' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--blue)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                    {(m.senderName || 'T').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: m.status === 'unread' ? 600 : 400, color: 'var(--gray-800)' }}>{m.senderName || 'Unknown'}</span>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{new Date(m.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--gray-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</p>
+                    <p style={{ fontSize: 11, color: 'var(--blue)', marginTop: 2 }}>{m.property?.propertyName || ''}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -131,9 +165,9 @@ export default function Dashboard({ properties, setActivePage }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 0 }}>
             {[
-              { label: 'Paid this month', value: 'TZS 280,000', icon: <CheckCircle size={15} color="var(--green)" />, color: 'var(--green)' },
-              { label: 'Upcoming', value: 'TZS 280,000', icon: <Clock size={15} color="var(--amber)" />, color: 'var(--amber)' },
-              { label: 'Overdue', value: 'TZS 0', icon: <AlertCircle size={15} color="var(--red)" />, color: 'var(--red)' },
+              { label: 'Paid this month', value: 'TZS 0', icon: <CheckCircle size={15} color="var(--green)" />, color: 'var(--green)' },
+              { label: 'Upcoming',        value: 'TZS 0', icon: <Clock size={15} color="var(--amber)" />,       color: 'var(--amber)' },
+              { label: 'Overdue',         value: 'TZS 0', icon: <AlertCircle size={15} color="var(--red)" />,   color: 'var(--red)'   },
             ].map((item, i) => (
               <div key={i} style={{ padding: '18px 20px', borderRight: i < 2 ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
