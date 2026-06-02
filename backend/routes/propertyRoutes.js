@@ -1,5 +1,6 @@
-const express = require("express");
-const router = express.Router();
+const express    = require('express');
+const router     = express.Router();
+const { upload } = require('../config/cloudinary');
 
 const {
   getProperties,
@@ -7,21 +8,21 @@ const {
   createProperty,
   updateProperty,
   deleteProperty,
-} = require("../controllers/propertycontroller");
+} = require('../controllers/propertycontroller');
 
 // GET ALL
-router.get("/", getProperties);
+router.get('/', getProperties);
 
 // GET ONE
-router.get("/:id", getPropertyById);
+router.get('/:id', getPropertyById);
 
-// CREATE
-router.post("/", createProperty);
+// CREATE — accepts up to 10 images
+router.post('/', upload.array('images', 10), createProperty);
 
-// UPDATE
-router.put("/:id", updateProperty);
+// UPDATE — accepts up to 10 images
+router.put('/:id', upload.array('images', 10), updateProperty);
 
 // DELETE
-router.delete("/:id", deleteProperty);
+router.delete('/:id', deleteProperty);
 
 module.exports = router;
